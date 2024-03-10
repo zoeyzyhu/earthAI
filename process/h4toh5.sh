@@ -22,6 +22,7 @@ fi
 hdf_folder_path="$1"
 h5_folder_path="$2"
 
+
 # Check if HDF folder exists
 if [ ! -d "$hdf_folder_path" ]; then
     echo "Error: $hdf_folder_path does not exist."
@@ -47,7 +48,7 @@ for hdf_file in "$hdf_folder_path"/*.hdf; do
         ((count++))
 
         # Print processing message
-        echo "Processing file $count/$total_files: $hdf_file @ $(date)"
+        echo "Processing file $count/$total_files @ $(date)"
 
         # Extract date and granule number from the file name
         file_name=$(basename "$hdf_file")
@@ -56,22 +57,14 @@ for hdf_file in "$hdf_folder_path"/*.hdf; do
 
         echo "... Date: $date, Granule Number: $granule_number"
 
-        # Convert HDF to H5
+        # Check if H5 file already exists
         h5_file="$h5_folder_path/airs_"$date"_"$granule_number".h5"
-        echo "... Converting to H5: $h5_file"
-        ./h4toh5 "$hdf_file" "$h5_file"
-
-        # Process the H5 file
-        echo "... Converting to Parquet: $h5_file"
-        python3 convert_to_parquet.py "$h5_file"
-
-        # Load the parquet file into the database
-        echo "... Loading parquet file into database"
-        hive \
-        --hiveconf date=$date \
-        --hiveconf granule=$granule_number \
-        --hiveconf path=$h5_folder_path \
-        -f load_data.sql 2>/dev/null
+        if [ ! -e "$h5_file" ]; then
+            # Convert HDF to H5
+            ./h4toh5 "$hdf_file" "$h5_file"
+        else
+            echo "H5 file $h5_file already exists. Skipping conversion."
+        fi
 
     else
         echo "No HDF files found in $hdf_folder_path"
